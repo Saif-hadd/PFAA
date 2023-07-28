@@ -1,0 +1,63 @@
+stages:	
+  - test	
+  - build-push	
+  - deploy-web	
+  - deploy	
+include:	
+  # run template build and push	
+  - project: "tekab-dev-team/config/gitlab-ci"	
+    ref: "develop-v2"	
+    file: "docker-template.yml"	
+build:	
+  extends:	
+    - .build-push	
+  variables:	
+    API_URL: $API_URL	
+    FO_PORT: $FO_PORT	
+    SERVER_PORT: $SERVER_PORT	
+    SITE_URL: $SITE_URL	
+deploy-web:staging:	
+  environment: staging	
+  extends:	
+    - .deploy-web	
+deploy-web:production:	
+  extends:	
+    - .deploy-web	
+  only:	
+    - main	
+  environment: production	
+# Deployments	
+deploy:staging:	
+  extends:	
+    - .deploy	
+  environment: staging	
+  tags:	
+    - build-runner-tekab	
+  needs:	
+    - job: build	
+deploy:production:	
+  extends:	
+    - .deploy	
+  only:	
+    - main	
+  tags:	
+    - build-runner-tekab	
+  environment: production	
+  needs:	
+    - job: build
+test:
+  tags:
+    - build-runner-tekab  
+  stage: test	
+  before_script: 
+   - sudo apt-get update
+   - wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.38.0/install.sh | bash   
+   - export   NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" --no-use    - eval "[ -f .nvmrc ] "    
+   - nvm install 16.18.0
+   - nvm use v16.18.0    
+   - sudo apt -y install npm    
+   - sudo npm install --global yarn  
+   - cd server    
+   - yarn install  
+  script:    
+   - npm run test

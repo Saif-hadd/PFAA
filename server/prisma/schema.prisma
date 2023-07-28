@@ -1,0 +1,121 @@
+datasource postgres {
+  provider = "postgresql"
+  url      = env("POSTGRESQL_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator prismaCRUDGenerator {
+  provider = "npx prisma-generator-crud"
+  output   = "./generated"
+}
+
+model User {
+  id           String      @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime?   @updatedAt
+  deletedAt    DateTime?
+  Prenom       String?
+  nomN         String?
+  username     String      @unique
+  password     String?
+  isValid      Boolean?
+  roles        String[]
+  sageFemmes   SagesFemme? @relation(fields: [sageFemmesId], references: [id])
+  sageFemmesId String?
+  patient      Patient?    @relation(fields: [patientId], references: [id])
+  patientId    String?
+  messages     Message[]
+  telephone    String?
+  email        String?
+}
+
+model AppConfig {
+  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  deletedAt DateTime?
+  value     String?
+  key       String?   @unique
+}
+
+model Patient {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime?                 @updatedAt
+  deletedAt               DateTime?
+  dateNaissance           DateTime?
+  adresse                 String?
+  medecinTraitant         String?
+  patientSageFemmeMapping PatientSageFemmeMapping[]
+  room                    Room?                     @relation(fields: [roomId], references: [id])
+  roomId                  String?
+  user                    User[]
+  sagesFemmes             SagesFemme?               @relation(fields: [sagesFemmesId], references: [id])
+  sagesFemmesId           String?                   @unique
+}
+
+model SagesFemme {
+  id                           String                         @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime?                      @updatedAt
+  deletedAt                    DateTime?
+  geolocalisation              String?
+  diplome                      String?
+  description                  String?
+  creneauxConsultationDomicile CreneauxConsultationDomicile[]
+  patientSageFemmeMapping      PatientSageFemmeMapping[]
+  room                         Room?                          @relation(fields: [roomId], references: [id])
+  roomId                       String?
+  user                         User?
+  patient                      Patient[]
+}
+
+model Message {
+  id            String    @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+  deletedAt     DateTime?
+  contenu       String?
+  dateReception DateTime?
+  room          Room?     @relation(fields: [roomId], references: [id])
+  roomId        String?   @unique
+  user          User?     @relation(fields: [userId], references: [id])
+  userId        String?   @default(dbgenerated("requesting_user_id()"))
+}
+
+model CreneauxConsultationDomicile {
+  id            String      @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime?   @updatedAt
+  deletedAt     DateTime?
+  jour          String?
+  heureDebut    DateTime?
+  heureFin      DateTime?
+  sagesFemmes   SagesFemme? @relation(fields: [sagesFemmesId], references: [id])
+  sagesFemmesId String?     @unique
+}
+
+model PatientSageFemmeMapping {
+  id                    String      @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime?   @updatedAt
+  deletedAt             DateTime?
+  estSagefemmeReference Boolean?
+  patient               Patient?    @relation(fields: [patientId], references: [id])
+  patientId             String?     @unique
+  sagesFemmes           SagesFemme? @relation(fields: [sagesFemmesId], references: [id])
+  sagesFemmesId         String?     @unique
+}
+
+model Room {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime?    @updatedAt
+  deletedAt   DateTime?
+  patient     Patient[]
+  sagesFemmes SagesFemme[]
+  messages    Message[]
+}

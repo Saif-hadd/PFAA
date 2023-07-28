@@ -1,0 +1,54 @@
+# build environment
+FROM node:16.13.1-alpine3.14 as build
+WORKDIR /app
+
+RUN apk update \
+    && apk add --no-cache python3 \
+    && ln -sf python3 /usr/bin/python
+    
+ARG CF_ACCOUNT_ID
+ARG CF_API_TOKEN
+ARG VITE_API_URL
+ARG VITE_SITE_URL
+ARG VITE_ANON_KEY
+ARG VITE_RESET_PWD_REDIRECT_URL
+
+
+RUN echo $VITE_API_URL
+
+COPY package.json ./
+COPY yarn.lock ./
+COPY .npmrc ./
+RUN yarn --check-files
+ARG VUE_APP_API_URL
+ARG VUE_APP_GOOGLE_ANALYTICS_TRACKER_ID
+ARG CLIENT_NAME
+ARG CI_PROJECT_NAME
+ARG CI_ENVIRONMENT_TIER
+
+
+ENV VUE_APP_GOOGLE_ANALYTICS_TRACKER_ID=$VUE_APP_GOOGLE_ANALYTICS_TRACKER_ID
+ENV VUE_APP_API_URL=$VUE_APP_API_URL
+ENV CLIENT_NAME=$CLIENT_NAME
+ENV CI_PROJECT_NAME=$CI_PROJECT_NAME
+ENV CI_ENVIRONMENT_TIER=$CI_ENVIRONMENT_TIER
+
+ENV CF_ACCOUNT_ID=$CF_ACCOUNT_ID
+ENV CF_API_TOKEN=$CF_API_TOKEN
+
+RUN echo $CF_API_TOKEN
+
+COPY . /app
+RUN yarn build
+
+RUN yarn global add wrangler@3.0.0
+RUN echo $CF_API_TOKEN
+RUN echo ${CLIENT_NAME}-${CI_ENVIRONMENT_TIER}
+RUN echo ${CF_API_TOKEN}
+RUN echo ${CF_ACCOUNT_ID}
+
+RUN if ! CF_ACCOUNT_ID=$CF_ACCOUNT_ID CF_API_TOKEN=$CF_API_TOKEN wrangler pages project list | grep -qw ${CLIENT_NAME}-${CI_ENVIRONMENT_TIER}; then \
+         CF_ACCOUNT_ID=$CF_ACCOUNT_ID CF_API_TOKEN=$CF_API_TOKEN wrangler   pages project create --project-name ${CLIENT_NAME}-${CI_ENVIRONMENT_TIER}  --production-branch main; \
+    fi
+RUN CF_ACCOUNT_ID=${CF_ACCOUNT_ID} CF_API_TOKEN=${CF_API_TOKEN} wrangler pages publish /app/dist --project-name ${CLIENT_NAME}-${CI_ENVIRONMENT_TIER}
+
